@@ -33,7 +33,7 @@ int main(void) {
     while (true) {
         char input[6];
         int last = 0;
-        printf("Choose the command:\n");
+        printf("Choose the command or enter /help:\n");
         scanf("%s", &input[6]);
         int input_hash = hash(&input[6]);
         switch (input_hash) {
@@ -59,7 +59,15 @@ int main(void) {
                 printf("7\n");
                 break;
             case help:
-                printf("Manual...\n");
+                printf("Commands: \n"
+                       "1: Append text symbols to the end\n"
+                       "2: Start the new line\n"
+                       "3: Save text into file\n"
+                       "4: Load text from file\n"
+                       "5: Print the current text\n"
+                       "6: Insert text by line and index\n"
+                       "7: Search text placement\n"
+                       "/exit: Exit program\n");
                 break;
             case prog_exit:
                 exit(0);

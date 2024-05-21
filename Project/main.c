@@ -1,75 +1,116 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
-#define command1 77622
-#define command2 77623
-#define command3 77624
-#define command4 77625
-#define command5 77626
-#define command6 77627
-#define command7 77628
-#define help 41629
-#define prog_exit 54414
-
-int hash(char *str) {
-    unsigned long hash = 5381;
-    int c;
-
-    while ((c = *str++))
-        hash = ((hash << 5) + hash) + c;
-
-    return (int) (hash % 100000);
+void print_help() {
+    printf("Commands: \n"
+           "1: Append text symbols to the end\n"
+           "2: Start the new line\n"
+           "3: Save text into file\n"
+           "4: Load text from file\n"
+           "5: Print the current text\n"
+           "6: Insert text by line and index\n"
+           "7: Search text placement\n"
+           "8: Clear console\n"
+           "0: Exit program\n");
 }
 
-void command_1(char user_text[]){
-    char input[32];
-    printf("Enter text to append: \n");
-    scanf("%s", input);
+char *append_text(char *text) {
+    printf("Enter text to append:\n");
+    getchar();
+    fgets(text, 100, stdin);
+    text[strcspn(text, "\n")] = '\0';
+    return text + strlen(text);
+}
+
+char *start_newline(char *text) {
+    *text = '\n';
+    return text + 1;
+}
+
+void save_file(char *text) {
+    FILE *file;
+    char file_name[32];
+    printf("Enter the file name for saving:");
+    scanf("%s", file_name);
+    file = fopen(file_name, "w");
+    if (file != NULL) {
+        fputs(text, file);
+        fclose(file);
+        printf("Text saved successfully\n");
+    }
+}
+
+void load_file(char *text) {
+    FILE *file;
+    char file_name[32];
+    printf("Enter the file name for loading:");
+    scanf("%s", file_name);
+    file = fopen(file_name, "r");
+    if (file == NULL) {
+        printf("Error opening file");
+    } else {
+        while (fgets(text, 100, file) != NULL) {
+            text = text + strlen(text);
+        }
+        printf("Text loaded successfully\n");
+        fclose(file);
+    }
+}
+
+void print_text(char *text){
+    printf("%s\n", text);
+}
+
+void insert_text();
+
+void search_text();
+
+void clear_console(){
+#ifdef _WIN64
+    system("cls");
+#else
+    system("clear");
+#endif
 }
 
 int main(void) {
-    char *user_text = (char *) malloc(128*sizeof(char));
+    char *text = malloc(100 * sizeof(char));
+    char *last_char = text; //movable pointer to the last_char symbol
     while (true) {
-        char input[6];
-        int last = 0;
-        printf("Choose the command or enter /help:\n");
-        scanf("%s", &input[6]);
-        int input_hash = hash(&input[6]);
-        switch (input_hash) {
-            case command1:
-                command_1(user_text);
+        int input;
+        printf("Choose the command or enter 9 for commands list:\n");
+        scanf("%d", &input);
+        switch (input) {
+            case 1:
+                last_char = append_text(last_char);
                 break;
-            case command2:
-                printf("2\n");
+            case 2:
+                last_char = start_newline(last_char);
                 break;
-            case command3:
-                printf("3\n");
+            case 3:
+                save_file(text);
                 break;
-            case command4:
-                printf("4\n");
+            case 4:
+                load_file(text);
                 break;
-            case command5:
-                printf("5\n");
+            case 5:
+                print_text(text);
                 break;
-            case command6:
-                printf("6\n");
+//            case 6:
+//                insert_text();
+//                break;
+//            case 7:
+//                search_text();
+//                break;
+            case 8:
+                clear_console();
                 break;
-            case command7:
-                printf("7\n");
+            case 9:
+                print_help();
                 break;
-            case help:
-                printf("Commands: \n"
-                       "1: Append text symbols to the end\n"
-                       "2: Start the new line\n"
-                       "3: Save text into file\n"
-                       "4: Load text from file\n"
-                       "5: Print the current text\n"
-                       "6: Insert text by line and index\n"
-                       "7: Search text placement\n"
-                       "/exit: Exit program\n");
-                break;
-            case prog_exit:
+            case 0:
                 exit(0);
             default:
                 printf("The command is not implemented\n");

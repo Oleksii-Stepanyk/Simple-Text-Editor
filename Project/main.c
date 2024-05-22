@@ -3,11 +3,11 @@
 #include <string.h>
 #include <stdbool.h>
 
-int initial_rows = 10;
-int initial_cols = 256;
-int total_rows = 0;
+int arrayRows = 10;
+int arrayCols = 256;
+int totalRows = 0; //of text
 
-char **allocate_2d_array(int *rows, int *cols) {
+char **allocateArray(int *rows, int *cols) {
     char **array = malloc(*rows * sizeof(char *));
     if (array == NULL) {
         perror("Failed to allocate memory");
@@ -23,8 +23,8 @@ char **allocate_2d_array(int *rows, int *cols) {
     return array;
 }
 
-char **reallocate_2d_array(const int *old_rows, const int *new_rows, const int *cols, char **array) {
-    array = realloc(array, *new_rows * sizeof(char *));
+char **reallocateRows(const int *old_rows, const int *new_rows, const int *cols, char **array) {
+    array = realloc(array, *new_rows * sizeof(char*));
     if (array == NULL) {
         perror("Failed to allocate memory");
         return NULL;
@@ -36,8 +36,16 @@ char **reallocate_2d_array(const int *old_rows, const int *new_rows, const int *
             return NULL;
         }
     }
-    initial_rows = *new_rows;
+    arrayRows = *new_rows;
     return array;
+}
+
+void shiftRight(char* array, int* startIndex, int* shiftAmount) {
+    int arraySize = arrayCols;
+    for (int i = arraySize - *shiftAmount; i >= *startIndex; i--) {
+        array[i + *shiftAmount] = array[i];
+    }
+    array[strlen(array) + 1] = '\0';
 }
 
 void print_help() {
@@ -63,9 +71,12 @@ char *append_text(char *text) {
 
 char *start_newline(char **text, char *last_char) {
     *last_char = '\n';
-    total_rows++;
-    *text[total_rows] = '\0';
-    return text[total_rows];
+    last_char++;
+    *last_char = '\0';
+    totalRows++;
+    last_char = text[totalRows];
+    *last_char = '\0';
+    return text[totalRows];
 }
 
 void save_file(char **text) {
@@ -75,7 +86,7 @@ void save_file(char **text) {
     scanf("%s", file_name);
     file = fopen(file_name, "w");
     if (file != NULL) {
-        for (int i = 0; i <= total_rows; i++) {
+        for (int i = 0; i <= totalRows; i++) {
             fputs(text[i], file);
         }
         fclose(file);
@@ -92,25 +103,41 @@ char *load_file(char **text) {
     if (file == NULL) {
         printf("Error opening file");
     } else {
-        while (fgets(*text, initial_cols, file) != NULL) {
+        while (fgets(*text, arrayCols, file) != NULL) {
             char *last_char = *text + strlen(*text);
             *last_char = '\0';
             text++;
-            total_rows++;
+            totalRows++;
         }
-        printf("Text loaded successfully\n");
+        if (totalRows < arrayRows) {
+            *(*text - 1) = '\0';
+        }
         fclose(file);
     }
     return *text + strlen(*text);
 }
 
 void print_text(char **text) {
-    for (int i = 0; i <= total_rows; i++) {
+    for (int i = 0; i <= totalRows; i++) {
         printf("%s", text[i]);
     }
 }
 
-void insert_text(char *text);
+void insert_text(char** text) {
+    int row, col;
+    char entered_text[128];
+    printf("Enter the row and column to insert text:");
+    scanf("%d %d", &row, &col);
+    printf("Enter text to insert:");
+    getchar();
+    fgets(entered_text, 128, stdin);
+    entered_text[strcspn(entered_text, "\n")] = '\0';
+    int shift_amount = strlen(entered_text);
+    shiftRight(text[row], &col, &shift_amount);
+    for (int i = 0; i < shift_amount; i++) {
+        text[row][col + i] = entered_text[i];
+    }
+}
 
 void search_text(char *text);
 
@@ -123,7 +150,7 @@ void clear_console() {
 }
 
 int main(void) {
-    char **text = allocate_2d_array(&initial_rows, &initial_cols);
+    char **text = allocateArray(&arrayRows, &arrayCols);
     char *last_char = *text; //movable pointer to the last symbol
     while (true) {
         int input;
@@ -145,11 +172,11 @@ int main(void) {
             case 5:
                 print_text(text);
                 break;
-//            case 6:
-//                insert_text();
-//                break;
+            case 6:
+                insert_text(text);
+                break;
 //            case 7:
-//                search_text(text);
+//                search_text();
 //                break;
             case 8:
                 clear_console();

@@ -7,7 +7,7 @@ int arrayRows = 10;
 int arrayCols = 256;
 int totalRows = 0; //of text
 
-char **allocateArray(int *rows, int *cols) {
+char **allocateArray(const int *rows, const int *cols) {
     char **array = malloc(*rows * sizeof(char *));
     if (array == NULL) {
         perror("Failed to allocate memory");
@@ -24,7 +24,7 @@ char **allocateArray(int *rows, int *cols) {
 }
 
 char **reallocateRows(const int *old_rows, const int *new_rows, const int *cols, char **array) {
-    array = realloc(array, *new_rows * sizeof(char*));
+    array = realloc(array, *new_rows * sizeof(char *));
     if (array == NULL) {
         perror("Failed to allocate memory");
         return NULL;
@@ -40,7 +40,7 @@ char **reallocateRows(const int *old_rows, const int *new_rows, const int *cols,
     return array;
 }
 
-void shiftRight(char* array, int* startIndex, int* shiftAmount) {
+void shiftRight(char *array, const int *startIndex, const int *shiftAmount) {
     int arraySize = arrayCols;
     for (int i = arraySize - *shiftAmount; i >= *startIndex; i--) {
         array[i + *shiftAmount] = array[i];
@@ -64,7 +64,7 @@ void print_help() {
 char *append_text(char *text) {
     printf("Enter text to append:\n");
     getchar();
-    fgets(text, 100, stdin);
+    fgets(text, 255, stdin);
     text[strcspn(text, "\n")] = '\0';
     return text + strlen(text);
 }
@@ -74,8 +74,7 @@ char *start_newline(char **text, char *last_char) {
     last_char++;
     *last_char = '\0';
     totalRows++;
-    last_char = text[totalRows];
-    *last_char = '\0';
+    *text[totalRows] = '\0';
     return text[totalRows];
 }
 
@@ -103,17 +102,18 @@ char *load_file(char **text) {
     if (file == NULL) {
         printf("Error opening file");
     } else {
-        while (fgets(*text, arrayCols, file) != NULL) {
+        for (int i = 0; i < arrayRows; i++) {
+            text[i][0] = '\0';
+        }
+        while (fgets(*text, 255, file) != NULL) {
             char *last_char = *text + strlen(*text);
             *last_char = '\0';
             text++;
             totalRows++;
         }
-        if (totalRows < arrayRows) {
-            *(*text - 1) = '\0';
-        }
-        fclose(file);
     }
+    totalRows--;
+    fclose(file);
     return *text + strlen(*text);
 }
 
@@ -121,9 +121,10 @@ void print_text(char **text) {
     for (int i = 0; i <= totalRows; i++) {
         printf("%s", text[i]);
     }
+    printf("\n");
 }
 
-void insert_text(char** text) {
+void insert_text(char **text) {
     int row, col;
     char entered_text[128];
     printf("Enter the row and column to insert text:");
@@ -132,14 +133,37 @@ void insert_text(char** text) {
     getchar();
     fgets(entered_text, 128, stdin);
     entered_text[strcspn(entered_text, "\n")] = '\0';
-    int shift_amount = strlen(entered_text);
+    int shift_amount = (int) strlen(entered_text);
     shiftRight(text[row], &col, &shift_amount);
     for (int i = 0; i < shift_amount; i++) {
         text[row][col + i] = entered_text[i];
     }
 }
 
-void search_text(char *text);
+void search_text(char **text) {
+    char search_text[128];
+    char *position;
+    bool found;
+    int index;
+    printf("Enter text you want to find:");
+    getchar();
+    fgets(search_text, 128, stdin);
+    search_text[strcspn(search_text, "\n")] = '\0';
+    printf("Text found in:");
+    for (int i = 0; i <= totalRows; ++i) {
+        position = text[i];
+        while ((position = strstr(position, search_text)) != NULL) {
+            index = (int) (position - text[i]);
+            printf("%d %d; ", i, index);
+            position += strlen(search_text);
+            found = true;
+        }
+    }
+    printf("\n");
+    if (!found) {
+        printf("Text not found");
+    }
+}
 
 void clear_console() {
 #ifdef _WIN64
@@ -152,6 +176,7 @@ void clear_console() {
 int main(void) {
     char **text = allocateArray(&arrayRows, &arrayCols);
     char *last_char = *text; //movable pointer to the last symbol
+    *last_char = '\0';
     while (true) {
         int input;
         printf("Choose the command or enter 9 for commands list:\n");
@@ -175,9 +200,9 @@ int main(void) {
             case 6:
                 insert_text(text);
                 break;
-//            case 7:
-//                search_text();
-//                break;
+            case 7:
+                search_text(text);
+                break;
             case 8:
                 clear_console();
                 break;
@@ -185,6 +210,9 @@ int main(void) {
                 print_help();
                 break;
             case 0:
+                for (int i = 0; i < arrayRows; ++i) {
+                    free(text[i]);
+                }
                 free(text);
                 exit(0);
             default:
@@ -192,5 +220,4 @@ int main(void) {
                 break;
         }
     }
-    return 0;
 }

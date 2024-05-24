@@ -3,8 +3,9 @@
 #include <string.h>
 #include <stdbool.h>
 
-int arrayRows = 10;
-int arrayCols = 256;
+char **text; //const but not totally
+int arrayRows = 10; //initial value
+int arrayCols = 128; //initial value
 int totalRows = 0; //of text
 
 char **allocateArray(const int *rows, const int *cols) {
@@ -40,12 +41,26 @@ char **reallocateRows(const int *old_rows, const int *new_rows, const int *cols,
     return array;
 }
 
-void shiftRight(char *array, const int *startIndex, const int *shiftAmount) {
-    int arraySize = arrayCols;
-    for (int i = arraySize - *shiftAmount; i >= *startIndex; i--) {
-        array[i + *shiftAmount] = array[i];
+char **reallocateCols(const int *new_cols, char **array) {
+    for (int i = 0; i < arrayRows; i++) {
+        array[i] = realloc(array[i], *new_cols * sizeof(char));
+        if (array[i] == NULL) {
+            perror("Failed to allocate memory");
+            return NULL;
+        }
     }
-    array[strlen(array) + 1] = '\0';
+    arrayCols = *new_cols;
+    return array;
+}
+
+void shiftRight(const int *row, const int *startIndex, const int *shiftAmount) {
+    if (*startIndex + *shiftAmount >= arrayCols) {
+		text = reallocateCols(arrayCols + 128, text);
+	}
+    for (int i = arrayCols; i >= *startIndex; i--) {
+        text[*row][i + *shiftAmount] = text[*row][i];
+    }
+    text[*row][strlen(text[*row]) + 1] = '\0';
 }
 
 void print_help() {
@@ -61,24 +76,38 @@ void print_help() {
            "0: Exit program\n");
 }
 
-char *append_text(char *text) {
+char *append_text(char *last_char) {
+    char buffer[256];
     printf("Enter text to append:\n");
     getchar();
-    fgets(text, 255, stdin);
-    text[strcspn(text, "\n")] = '\0';
-    return text + strlen(text);
+    fgets(buffer, 256, stdin);
+    buffer[strcspn(buffer, "\n")] = '\0';
+    if (strlen(text[totalRows]) + strlen(buffer) >= arrayCols) {
+        int newCols = arrayCols + 128;
+        text = reallocateCols(&newCols, text);
+        last_char = strstr(text[totalRows], "\0");
+        strcat(last_char, buffer);
+    }
+    else {
+        strcat(last_char, buffer);
+    }
+    return last_char + strlen(buffer);
 }
 
-char *start_newline(char **text, char *last_char) {
+char *start_newline(char *last_char) {
     *last_char = '\n';
     last_char++;
     *last_char = '\0';
+    if (totalRows + 1 >= arrayRows) {
+		int newRows = arrayRows + 10;
+		text = reallocateRows(&arrayRows, &newRows, &arrayCols, text);
+	}
     totalRows++;
     *text[totalRows] = '\0';
     return text[totalRows];
 }
 
-void save_file(char **text) {
+void save_file() {
     FILE *file;
     char file_name[32];
     printf("Enter the file name for saving:");
@@ -92,62 +121,81 @@ void save_file(char **text) {
         printf("Text saved successfully\n");
     }
 }
-
-char *load_file(char **text) {
+char *load_file() {
     FILE *file;
     char file_name[32];
+    char buffer[128];
+    int rows = 0;
     printf("Enter the file name for loading:");
     scanf("%s", file_name);
     file = fopen(file_name, "r");
     if (file == NULL) {
         printf("Error opening file");
-    } else {
-        for (int i = 0; i < arrayRows; i++) {
-            text[i][0] = '\0';
+        return NULL;
+    }
+    while (fgets(buffer, 128, file) != NULL) {
+        if (strlen(text[rows]) + strlen(buffer) >= arrayCols) {
+            int newCols = arrayCols + 128;
+            text = reallocateCols(&newCols, text);
         }
-        while (fgets(*text, 255, file) != NULL) {
-            char *last_char = *text + strlen(*text);
-            *last_char = '\0';
-            text++;
-            totalRows++;
+        strcat(text[rows], buffer);
+
+        if (strchr(text[rows], '\n') != NULL) {
+            if (totalRows + 1 >= arrayRows) {
+                int newRows = arrayRows + 10;
+                text = reallocateRows(&arrayRows, &newRows, &arrayCols, text);
+            }
+            text[rows+1] = start_newline(text[rows] + strlen(text[rows]));
+            text[rows][strlen(text[rows])-1] = '\0';
+            rows++;
         }
     }
-    totalRows--;
     fclose(file);
-    return *text + strlen(*text);
+    return text[rows] + strlen(text[rows]);
 }
 
-void print_text(char **text) {
+void print_text() {
     for (int i = 0; i <= totalRows; i++) {
         printf("%s", text[i]);
     }
     printf("\n");
 }
 
-void insert_text(char **text) {
+char *insert_text() {
     int row, col;
-    char entered_text[128];
+    char entered_text[64];
     printf("Enter the row and column to insert text:");
     scanf("%d %d", &row, &col);
+    if (row > arrayRows) {
+        int newRows = arrayRows + 10;
+		text = reallocateRows(&arrayRows, &newRows, &arrayCols, text);
+	}
+    char** position = text;
+    if (row > totalRows) {
+        for (int i = totalRows + 1; i <= row; i++) {
+            position[i] = start_newline(text[totalRows]+strlen(text[totalRows]));
+		}
+	}
     printf("Enter text to insert:");
     getchar();
-    fgets(entered_text, 128, stdin);
+    fgets(entered_text, 64, stdin);
     entered_text[strcspn(entered_text, "\n")] = '\0';
     int shift_amount = (int) strlen(entered_text);
-    shiftRight(text[row], &col, &shift_amount);
+    shiftRight(&row, &col, &shift_amount);
     for (int i = 0; i < shift_amount; i++) {
         text[row][col + i] = entered_text[i];
     }
+    return text[row][col + shift_amount];
 }
 
-void search_text(char **text) {
-    char search_text[128];
+void search_text() {
+    char search_text[64];
     char *position;
     bool found;
     int index;
     printf("Enter text you want to find:");
     getchar();
-    fgets(search_text, 128, stdin);
+    fgets(search_text, 64, stdin);
     search_text[strcspn(search_text, "\n")] = '\0';
     printf("Text found in:");
     for (int i = 0; i <= totalRows; ++i) {
@@ -174,7 +222,7 @@ void clear_console() {
 }
 
 int main(void) {
-    char **text = allocateArray(&arrayRows, &arrayCols);
+    text = allocateArray(&arrayRows, &arrayCols);
     char *last_char = *text; //movable pointer to the last symbol
     *last_char = '\0';
     while (true) {
@@ -186,22 +234,22 @@ int main(void) {
                 last_char = append_text(last_char);
                 break;
             case 2:
-                last_char = start_newline(text, last_char);
+                last_char = start_newline(last_char);
                 break;
             case 3:
-                save_file(text);
+                save_file();
                 break;
             case 4:
-                last_char = load_file(text);
+                last_char = load_file();
                 break;
             case 5:
-                print_text(text);
+                print_text();
                 break;
             case 6:
-                insert_text(text);
+                last_char = insert_text();
                 break;
             case 7:
-                search_text(text);
+                search_text();
                 break;
             case 8:
                 clear_console();

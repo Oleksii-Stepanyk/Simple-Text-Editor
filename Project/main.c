@@ -131,7 +131,7 @@ char *load_file() {
     scanf("%s", file_name);
     file = fopen(file_name, "r");
     if (file == NULL) {
-        printf("Error opening file");
+        printf("Error opening file\n");
         return NULL;
     }
     while (fgets(buffer, 128, file) != NULL) {
